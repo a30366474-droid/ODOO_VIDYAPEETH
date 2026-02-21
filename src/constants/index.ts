@@ -23,6 +23,7 @@ export const ROUTES = {
   PERFORMANCE: "/dashboard/performance",
   ANALYTICS: "/dashboard/analytics",
   REPORTS: "/dashboard/reports",
+  SETTINGS: "/dashboard/settings",
 } as const;
 
 export const SIDEBAR_NAV = [
@@ -33,4 +34,5 @@ export const SIDEBAR_NAV = [
   { label: "Trip & Expense", href: ROUTES.EXPENSES, icon: "expense" },
   { label: "Performance", href: ROUTES.PERFORMANCE, icon: "performance" },
   { label: "Analytics", href: ROUTES.ANALYTICS, icon: "analytics" },
+  { label: "Settings", href: ROUTES.SETTINGS, icon: "settings" },
 ] as const;

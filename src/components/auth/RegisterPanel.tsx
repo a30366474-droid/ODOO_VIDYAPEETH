@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input, Button, Select } from "@/components/ui";
 import { ROLES } from "@/constants";
 
@@ -9,17 +10,24 @@ interface RegisterPanelProps {
 }
 
 export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
+  const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: implement registration logic
-    console.log("Register:", { fullName, username, email, password, role, serialNumber });
+    setIsLoading(true);
+    
+    // Simulate registration delay, then redirect to dashboard
+    setTimeout(() => {
+      console.log("Register:", { fullName, username, email, password, role, serialNumber });
+      router.push("/dashboard");
+    }, 800);
   };
 
   return (
@@ -103,8 +111,8 @@ export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
         />
 
         <div className="pt-2">
-          <Button type="submit" variant="outline" fullWidth>
-            Register
+          <Button type="submit" variant="primary" fullWidth disabled={isLoading}>
+            {isLoading ? "Registering..." : "Register"}
           </Button>
         </div>
       </form>

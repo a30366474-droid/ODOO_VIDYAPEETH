@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input, Button } from "@/components/ui";
 
 interface LoginPanelProps {
@@ -8,14 +9,21 @@ interface LoginPanelProps {
 }
 
 export default function LoginPanel({ onSwitchToRegister }: LoginPanelProps) {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role] = useState("admin");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: implement login logic
-    console.log("Login:", { username, password, role });
+    setIsLoading(true);
+    
+    // Simulate login delay, then redirect to dashboard
+    setTimeout(() => {
+      console.log("Login:", { username, password, role });
+      router.push("/dashboard");
+    }, 800);
   };
 
   return (
@@ -64,8 +72,8 @@ export default function LoginPanel({ onSwitchToRegister }: LoginPanelProps) {
         />
 
         <div className="pt-2">
-          <Button type="submit" variant="outline" fullWidth>
-            Login
+          <Button type="submit" variant="primary" fullWidth disabled={isLoading}>
+            {isLoading ? "Logging in..." : "Login"}
           </Button>
         </div>
       </form>
