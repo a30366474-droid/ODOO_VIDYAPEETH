@@ -1,29 +1,27 @@
 // ─── Auth API: Register (Public) ──────────────────────────────────────────────
 // POST /api/auth/register
 // Allows new users to self-register with a chosen role.
-// In production: you may want admin approval or invite-only registration.
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/lib/jwt";
-import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 const VALID_ROLES: Role[] = ["admin", "fleet_manager", "dispatcher", "safety_officer", "finance"];
+
+// ── In-memory user store for demo ────────────────────────────────────────────
+const registeredUsers: any[] = [];
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { fullName, username, email, password, role } = body;
 
+        console.log("📝 [Register Request]", { email, username });
+
         // ── Input validation ─────────────────────────────────────────────────────
         if (!fullName || !username || !email || !password || !role) {
             return NextResponse.json(
-                { success: false, error: "fullName, username, email, password, and role are required." },
+                { success: false, error: "All fields are required." },
                 { status: 400 }
             );
         }
@@ -50,42 +48,31 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── Check if email already exists in Supabase ────────────────────────────
-        const { data: existingUser } = await supabase
-            .from("users")
-            .select("id")
-            .eq("email", email.toLowerCase())
-            .single();
-
-        if (existingUser) {
+        // ── Check if email already exists ────────────────────────────────────────
+        const exists = registeredUsers.some(
+            (u) => u.email.toLowerCase() === email.toLowerCase() ||
+                u.username.toLowerCase() === username.toLowerCase()
+        );
+        if (exists) {
             return NextResponse.json(
-                { success: false, error: "An account with this email already exists." },
+                { success: false, error: "Email or username already exists." },
                 { status: 409 }
             );
         }
 
-        // ── Hash password & create user in Supabase ──────────────────────────────
-        const passwordHash = await bcrypt.hash(password, 12);
-        const { data: newUser, error: insertError } = await supabase
-            .from("users")
-            .insert({
-                username: username.toLowerCase(),
-                email: email.toLowerCase(),
-                password_hash: passwordHash,
-                full_name: fullName,
-                role: role as Role,
-                status: "active",
-            })
-            .select()
-            .single();
+        // ── Create user in memory ──────────────────────────────────────────────────
+        const newUser = {
+            id: `usr_${Date.now()}`,
+            email: email.toLowerCase(),
+            full_name: fullName,
+            username: username.toLowerCase(),
+            password: password, // In memory, storing plain for demo
+            role: role as Role,
+            status: "active",
+        };
 
-        if (insertError || !newUser) {
-            console.error("Insert error:", insertError);
-            return NextResponse.json(
-                { success: false, error: "Failed to create account." },
-                { status: 500 }
-            );
-        }
+        registeredUsers.push(newUser);
+        console.log("✅ User registered:", newUser.email);
 
         // ── Generate tokens immediately (auto-login after register) ─────────────
         const { accessToken, refreshToken } = generateTokenPair({

@@ -4,19 +4,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/lib/jwt";
-import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// ── Mock users for testing (before Supabase is fully set up) ────────────────
+const MOCK_USERS = [
+  {
+    id: "usr_001",
+    email: "admin@fleetflow.com",
+    password: "Admin@123",
+    full_name: "System Admin",
+    role: "admin" as Role,
+    status: "active",
+  },
+  {
+    id: "usr_002",
+    email: "manager@fleetflow.com",
+    password: "Manager@123",
+    full_name: "Fleet Manager",
+    role: "fleet_manager" as Role,
+    status: "active",
+  },
+  {
+    id: "usr_003",
+    email: "test@fleetflow.com",
+    password: "Test@1234",
+    full_name: "Test Admin",
+    role: "admin" as Role,
+    status: "active",
+  },
+];
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { email, password } = body;
+
+        console.log("🔍 [Login Request] Email:", email);
 
         // ── Input validation ────────────────────────────────────────────────────
         if (!email || !password) {
@@ -26,36 +49,35 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── Query Supabase for user ────────────────────────────────────────────
-        const { data: user, error } = await supabase
-            .from("users")
-            .select("*")
-            .eq("email", email.toLowerCase())
-            .single();
+        // ── Find user in mock data ──────────────────────────────────────────────
+        console.log("🔄 Checking mock users...");
+        const user = MOCK_USERS.find(
+            (u) => u.email.toLowerCase() === email.toLowerCase()
+        );
 
-        if (error || !user) {
+        if (!user) {
+            console.error("❌ User not found");
             return NextResponse.json(
                 { success: false, error: "Invalid email or password." },
                 { status: 401 }
             );
         }
 
-        // ── Account active check ────────────────────────────────────────────────
-        if (user.status !== "active") {
-            return NextResponse.json(
-                { success: false, error: "Account is suspended. Contact your administrator." },
-                { status: 403 }
-            );
-        }
+        console.log("✅ User found:", user.email);
 
-        // ── Password verification with bcrypt ───────────────────────────────────
-        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        // ── Check password ─────────────────────────────────────────────────────
+        console.log("🔐 Verifying password...");
+        const isPasswordValid = password === user.password;
+        
         if (!isPasswordValid) {
+            console.error("❌ Password mismatch");
             return NextResponse.json(
                 { success: false, error: "Invalid email or password." },
                 { status: 401 }
             );
         }
+
+        console.log("✅ Password verified");
 
         // ── Generate tokens ─────────────────────────────────────────────────────
         const { accessToken, refreshToken } = generateTokenPair({
@@ -75,7 +97,6 @@ export async function POST(req: NextRequest) {
                     name: user.full_name,
                     role: user.role,
                 },
-                // Also return access token in body for clients that prefer Authorization header
                 accessToken,
             },
             { status: 200 }
@@ -88,7 +109,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
         console.error("[POST /api/auth/login]", err);
         return NextResponse.json(
-            { success: false, error: "Internal server error." },
+            { success: false, error: "Internal server error: " + (err instanceof Error ? err.message : "Unknown error") },
             { status: 500 }
         );
     }
