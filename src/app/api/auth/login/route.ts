@@ -6,12 +6,6 @@ import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/
 import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -24,6 +18,12 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // ── Initialize Supabase (inside handler to avoid build-time errors) ────
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
 
         // ── Query Supabase for user ────────────────────────────────────────────
         const { data: user, error } = await supabase

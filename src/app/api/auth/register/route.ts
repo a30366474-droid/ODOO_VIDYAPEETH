@@ -6,17 +6,18 @@ import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/
 import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 const VALID_ROLES: Role[] = ["admin", "fleet_manager", "dispatcher", "safety_officer", "finance"];
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { fullName, username, email, password, role } = body;
+
+        // ── Initialize Supabase (inside handler to avoid build-time errors) ────
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
 
         // ── Input validation ─────────────────────────────────────────────────────
         if (!fullName || !username || !email || !password || !role) {
