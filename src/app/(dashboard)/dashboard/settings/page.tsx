@@ -2,7 +2,9 @@
 
 import React from "react";
 import { useTheme } from "@/context";
+import { useAuth } from "@/context";
 import { useLocalStorage } from "@/hooks";
+import { ROLE_LABELS } from "@/lib/roles";
 
 interface UserSettings {
   notifications: {
@@ -112,11 +114,21 @@ function SettingSelect<T extends string>({
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { user } = useAuth();
+
+  // Get user info first
+  const userNameDisplay = user?.name || "User";
+  const userEmail = user?.email || "";
+  const userRole = user?.role ? ROLE_LABELS[user.role] : "Unknown";
+  const userInitial = userNameDisplay[0]?.toUpperCase() || "U";
+
   const [settings, setSettings] = useLocalStorage<UserSettings>(
     "fleetflow_settings",
     defaultSettings
   );
   const [saved, setSaved] = React.useState(false);
+  const [isEditingProfile, setIsEditingProfile] = React.useState(false);
+  const [editedName, setEditedName] = React.useState(userNameDisplay);
 
   const updateNotification = (key: keyof UserSettings["notifications"], value: boolean) => {
     setSettings({
@@ -152,6 +164,13 @@ export default function SettingsPage() {
     setTheme("light");
   };
 
+  const handleSaveProfile = () => {
+    // In production, you would send this to an API
+    setSaved(true);
+    setIsEditingProfile(false);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return (
     <div className="max-w-4xl">
       {/* Header */}
@@ -165,19 +184,79 @@ export default function SettingsPage() {
       {/* Profile Section */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profile</h2>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-            <span className="text-xl font-bold text-blue-700 dark:text-blue-300">A</span>
+        
+        {!isEditingProfile ? (
+          // Display Mode
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <span className="text-xl font-bold text-blue-700 dark:text-blue-300">{userInitial}</span>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">{userNameDisplay}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{userEmail}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Role: {userRole}</p>
+            </div>
+            <button 
+              onClick={() => setIsEditingProfile(true)}
+              className="ml-auto px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+            >
+              Edit Profile
+            </button>
           </div>
-          <div>
-            <p className="font-medium text-gray-900 dark:text-white">Admin User</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">admin@fleetflow.io</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Role: Administrator</p>
+        ) : (
+          // Edit Mode
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={userEmail}
+                disabled
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email cannot be changed</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                Role
+              </label>
+              <input
+                type="text"
+                value={userRole}
+                disabled
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Role cannot be changed</p>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <button
+                onClick={handleSaveProfile}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={() => setIsEditingProfile(false)}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-          <button className="ml-auto px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
-            Edit Profile
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Appearance Section */}

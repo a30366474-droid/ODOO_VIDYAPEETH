@@ -2,8 +2,16 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context";
 import { Input, Button, Select } from "@/components/ui";
-import { ROLES } from "@/constants";
+
+const ROLE_OPTIONS = [
+  { value: "admin", label: "Admin" },
+  { value: "fleet_manager", label: "Fleet Manager" },
+  { value: "dispatcher", label: "Dispatcher" },
+  { value: "safety_officer", label: "Safety Officer" },
+  { value: "finance", label: "Finance" },
+];
 
 interface RegisterPanelProps {
   onSwitchToLogin?: () => void;
@@ -11,6 +19,7 @@ interface RegisterPanelProps {
 
 export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
   const router = useRouter();
+  const { login: authLogin } = useAuth();
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -18,16 +27,45 @@ export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
   const [role, setRole] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (!role) {
+      setError("Please select a role.");
+      return;
+    }
+
     setIsLoading(true);
-    
-    // Simulate registration delay, then redirect to dashboard
-    setTimeout(() => {
-      console.log("Register:", { fullName, username, email, password, role, serialNumber });
+
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName, username, email, password, role, serialNumber }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Registration failed. Please try again.");
+        return;
+      }
+
+      // Update global auth state
+      if (data.user && data.accessToken) {
+        authLogin(data.user, data.accessToken);
+      }
+
       router.push("/dashboard");
-    }, 800);
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,10 +89,16 @@ export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
         </div>
       </div>
 
-      {/* Description text */}
       <p className="text-sm text-gray-500 text-center mb-6">
         Fill in all the information required for registration to get started with FleetFlow.
       </p>
+
+      {/* Error banner */}
+      {error && (
+        <div className="w-full mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Register Form */}
       <form onSubmit={handleSubmit} className="w-full space-y-4">
@@ -88,7 +132,7 @@ export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
         <Input
           label="Password"
           type="password"
-          placeholder="Create a password"
+          placeholder="Create a password (min 8 chars)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -96,7 +140,7 @@ export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
 
         <Select
           label="Role"
-          options={ROLES}
+          options={ROLE_OPTIONS}
           value={role}
           onChange={(e) => setRole(e.target.value)}
           required
@@ -112,7 +156,7 @@ export default function RegisterPanel({ onSwitchToLogin }: RegisterPanelProps) {
 
         <div className="pt-2">
           <Button type="submit" variant="primary" fullWidth disabled={isLoading}>
-            {isLoading ? "Registering..." : "Register"}
+            {isLoading ? "Registering…" : "Register"}
           </Button>
         </div>
       </form>

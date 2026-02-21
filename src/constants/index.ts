@@ -2,6 +2,8 @@
 // FleetFlow — Application Constants
 // ============================================
 
+import type { Permission } from "@/types/rbac";
+
 export const APP_NAME = "FleetFlow";
 export const APP_DESCRIPTION = "Modular Fleet & Logistics Management System";
 
@@ -26,13 +28,56 @@ export const ROUTES = {
   SETTINGS: "/dashboard/settings",
 } as const;
 
-export const SIDEBAR_NAV = [
+// Navigation with optional permission requirements
+interface NavItem {
+  label: string;
+  href: string;
+  icon: string;
+  requiredPermissions?: Permission[];
+}
+
+export const SIDEBAR_NAV: NavItem[] = [
   { label: "Dashboard", href: ROUTES.DASHBOARD, icon: "dashboard" },
-  { label: "Vehicle Registry", href: ROUTES.VEHICLES, icon: "vehicle" },
-  { label: "Trip Dispatcher", href: ROUTES.TRIPS, icon: "trip" },
-  { label: "Maintenance", href: ROUTES.MAINTENANCE, icon: "maintenance" },
-  { label: "Trip & Expense", href: ROUTES.EXPENSES, icon: "expense" },
-  { label: "Performance", href: ROUTES.PERFORMANCE, icon: "performance" },
-  { label: "Analytics", href: ROUTES.ANALYTICS, icon: "analytics" },
-  { label: "Settings", href: ROUTES.SETTINGS, icon: "settings" },
+  { 
+    label: "Vehicle Registry", 
+    href: ROUTES.VEHICLES, 
+    icon: "vehicle",
+    requiredPermissions: ["vehicles:read"]
+  },
+  { 
+    label: "Trip Dispatcher", 
+    href: ROUTES.TRIPS, 
+    icon: "trip",
+    requiredPermissions: ["trips:read"]
+  },
+  { 
+    label: "Maintenance", 
+    href: ROUTES.MAINTENANCE, 
+    icon: "maintenance",
+    requiredPermissions: ["maintenance:read"]
+  },
+  { 
+    label: "Trip & Expense", 
+    href: ROUTES.EXPENSES, 
+    icon: "expense",
+    requiredPermissions: ["finance:read"]
+  },
+  { 
+    label: "Performance", 
+    href: ROUTES.PERFORMANCE, 
+    icon: "performance",
+    requiredPermissions: ["analytics:read"]
+  },
+  { 
+    label: "Analytics", 
+    href: ROUTES.ANALYTICS, 
+    icon: "analytics",
+    requiredPermissions: ["analytics:read"]
+  },
+  { 
+    label: "Settings", 
+    href: ROUTES.SETTINGS, 
+    icon: "settings",
+    requiredPermissions: ["users:read"]
+  },
 ] as const;

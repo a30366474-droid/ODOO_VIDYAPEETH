@@ -3,6 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context";
+import { useHasAllPermissions } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_NAV } from "@/constants";
 
@@ -75,12 +77,30 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const handleLinkClick = () => {
     if (onClose) {
       onClose();
     }
   };
+
+  // Filter nav items based on user permissions
+  const filteredNav = SIDEBAR_NAV.filter((item) => {
+    // Dashboard is always visible
+    if (item.href === "/dashboard") return true;
+    
+    // If item has required permissions, check if user has them
+    if (item.requiredPermissions && item.requiredPermissions.length > 0) {
+      if (!user) return false;
+      
+      // Check if user has all required permissions
+      const { hasPermission } = require("@/lib/roles");
+      return item.requiredPermissions.every(perm => hasPermission(user.role, perm));
+    }
+    
+    return true;
+  });
 
   return (
     <>
@@ -132,7 +152,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
         {/* Nav items */}
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-          {SIDEBAR_NAV.map((item) => {
+          {filteredNav.map((item) => {
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
@@ -162,15 +182,27 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
         {/* Bottom section */}
         <div className="px-3 py-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">A</span>
+          {user ? (
+            <div className="flex items-center gap-3 px-3 py-2">
+              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                  {user.name[0]?.toUpperCase() || "U"}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{user.name}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.email}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 dark:text-white truncate">Admin</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">admin@fleetflow.io</p>
+          ) : (
+            <div className="flex items-center gap-3 px-3 py-2">
+              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16 mb-1 animate-pulse" />
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20 animate-pulse" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </>

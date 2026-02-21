@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context";
 import { Input, Button } from "@/components/ui";
+import { ROLE_LABELS } from "@/lib/roles";
 
 interface LoginPanelProps {
   onSwitchToRegister?: () => void;
@@ -10,25 +12,47 @@ interface LoginPanelProps {
 
 export default function LoginPanel({ onSwitchToRegister }: LoginPanelProps) {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const { login: authLogin } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role] = useState("admin");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
-    
-    // Simulate login delay, then redirect to dashboard
-    setTimeout(() => {
-      console.log("Login:", { username, password, role });
-      router.push("/dashboard");
-    }, 800);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include", // send / receive httpOnly cookies
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Login failed. Please try again.");
+        return;
+      }
+
+      // Update global auth state with user data and token
+      if (data.user && data.accessToken) {
+        authLogin(data.user, data.accessToken);
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* Avatar with role badge */}
+      {/* Avatar */}
       <div className="relative mb-8">
         <div className="w-24 h-24 rounded-full border-2 border-gray-300 flex items-center justify-center bg-gray-50">
           <svg
@@ -45,20 +69,23 @@ export default function LoginPanel({ onSwitchToRegister }: LoginPanelProps) {
             />
           </svg>
         </div>
-        {/* Role badge */}
-        <span className="absolute -top-1 -right-2 bg-blue-600 text-white text-xs font-medium px-2.5 py-0.5 rounded-full">
-          {role}
-        </span>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="w-full mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Login Form */}
       <form onSubmit={handleSubmit} className="w-full space-y-4">
         <Input
-          label="Username"
-          type="text"
-          placeholder="Enter your username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          label="Email"
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
@@ -73,7 +100,7 @@ export default function LoginPanel({ onSwitchToRegister }: LoginPanelProps) {
 
         <div className="pt-2">
           <Button type="submit" variant="primary" fullWidth disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
+            {isLoading ? "Logging in…" : "Login"}
           </Button>
         </div>
       </form>
