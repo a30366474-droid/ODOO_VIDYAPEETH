@@ -5,27 +5,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/lib/jwt";
+import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
 
-const VALID_ROLES: Role[] = ["admin", "fleet_manager", "dispatcher", "safety_officer", "finance"];
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-// ── In-memory store (replace with real DB) ───────────────────────────────────
-// In production: INSERT INTO users (...) VALUES (...)
-const registeredUsers: Array<{
-    id: string;
-    email: string;
-    name: string;
-    username: string;
-    passwordHash: string;
-    role: Role;
-    isActive: boolean;
-    serialNumber?: string;
-}> = [];
+const VALID_ROLES: Role[] = ["admin", "fleet_manager", "dispatcher", "safety_officer", "finance"];
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { fullName, username, email, password, role, serialNumber } = body;
+        const { fullName, username, email, password, role } = body;
 
         // ── Input validation ─────────────────────────────────────────────────────
         if (!fullName || !username || !email || !password || !role) {
@@ -57,40 +50,48 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── Check if email already exists ────────────────────────────────────────
-        // TODO (production): SELECT * FROM users WHERE email = $1
-        const exists = registeredUsers.some(
-            (u) => u.email.toLowerCase() === email.toLowerCase() ||
-                u.username.toLowerCase() === username.toLowerCase()
-        );
-        if (exists) {
+        // ── Check if email already exists in Supabase ────────────────────────────
+        const { data: existingUser } = await supabase
+            .from("users")
+            .select("id")
+            .eq("email", email.toLowerCase())
+            .single();
+
+        if (existingUser) {
             return NextResponse.json(
-                { success: false, error: "An account with this email or username already exists." },
+                { success: false, error: "An account with this email already exists." },
                 { status: 409 }
             );
         }
 
-        // ── Hash password & create user ──────────────────────────────────────────
+        // ── Hash password & create user in Supabase ──────────────────────────────
         const passwordHash = await bcrypt.hash(password, 12);
-        const newUser = {
-            id: `usr_${Date.now()}`,
-            email: email.toLowerCase(),
-            name: fullName,
-            username: username.toLowerCase(),
-            passwordHash,
-            role: role as Role,
-            isActive: true,
-            serialNumber: serialNumber ?? undefined,
-        };
+        const { data: newUser, error: insertError } = await supabase
+            .from("users")
+            .insert({
+                username: username.toLowerCase(),
+                email: email.toLowerCase(),
+                password_hash: passwordHash,
+                full_name: fullName,
+                role: role as Role,
+                status: "active",
+            })
+            .select()
+            .single();
 
-        // TODO (production): INSERT INTO users (...) VALUES (...)
-        registeredUsers.push(newUser);
+        if (insertError || !newUser) {
+            console.error("Insert error:", insertError);
+            return NextResponse.json(
+                { success: false, error: "Failed to create account." },
+                { status: 500 }
+            );
+        }
 
         // ── Generate tokens immediately (auto-login after register) ─────────────
         const { accessToken, refreshToken } = generateTokenPair({
             userId: newUser.id,
             email: newUser.email,
-            name: newUser.name,
+            name: newUser.full_name,
             role: newUser.role,
         });
 
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
                 user: {
                     id: newUser.id,
                     email: newUser.email,
-                    name: newUser.name,
+                    name: newUser.full_name,
                     role: newUser.role,
                 },
                 accessToken,

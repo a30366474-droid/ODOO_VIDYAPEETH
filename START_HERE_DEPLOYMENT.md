@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   full_name TEXT,
-  role TEXT CHECK (role IN ('admin', 'manager', 'driver', 'viewer')) DEFAULT 'viewer',
+  role TEXT CHECK (role IN ('admin', 'fleet_manager', 'dispatcher', 'safety_officer', 'finance')) DEFAULT 'fleet_manager',
   status TEXT DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
