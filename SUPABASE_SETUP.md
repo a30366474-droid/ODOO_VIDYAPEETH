@@ -5,12 +5,12 @@
 Copy and paste this SQL script in **Supabase SQL Editor** and run it:
 
 ```sql
--- Users Table with correct role enum
+-- Users Table with simple password column
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  password TEXT NOT NULL,
   full_name TEXT,
   role TEXT CHECK (role IN ('admin', 'fleet_manager', 'dispatcher', 'safety_officer', 'finance')) DEFAULT 'fleet_manager',
   status TEXT CHECK (status IN ('active', 'inactive')) DEFAULT 'active',

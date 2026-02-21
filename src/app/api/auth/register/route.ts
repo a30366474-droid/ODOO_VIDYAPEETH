@@ -1,9 +1,7 @@
 // ─── Auth API: Register (Public) ──────────────────────────────────────────────
 // POST /api/auth/register
 // Allows new users to self-register with a chosen role.
-// In production: you may want admin approval or invite-only registration.
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/lib/jwt";
 import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
@@ -64,14 +62,13 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── Hash password & create user in Supabase ──────────────────────────────
-        const passwordHash = await bcrypt.hash(password, 12);
+        // ── Create user in Supabase (with plain password) ──────────────────────
         const { data: newUser, error: insertError } = await supabase
             .from("users")
             .insert({
                 username: username.toLowerCase(),
                 email: email.toLowerCase(),
-                password_hash: passwordHash,
+                password: password,
                 full_name: fullName,
                 role: role as Role,
                 status: "active",

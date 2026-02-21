@@ -2,7 +2,6 @@
 // POST /api/auth/login
 // Public endpoint – no auth required
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { generateTokenPair, accessCookieOptions, refreshCookieOptions } from "@/lib/jwt";
 import { createClient } from "@supabase/supabase-js";
 import type { Role } from "@/types/rbac";
@@ -48,8 +47,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── Password verification with bcrypt ───────────────────────────────────
-        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        // ── Password verification (simple string comparison) ──────────────────────
+        const isPasswordValid = password === user.password;
         if (!isPasswordValid) {
             return NextResponse.json(
                 { success: false, error: "Invalid email or password." },
